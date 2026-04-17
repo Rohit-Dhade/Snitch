@@ -16,6 +16,22 @@ export const registerUser = async ({ email, contact, password, fullname, isSelle
         });
         return response.data;
     } catch (err) {
-        throw err;
+        // Prefer the JSON message from the backend response body
+        const message = err.response?.data?.message ?? err.message;
+        throw new Error(message);
+    }
+}
+
+export const loginUser = async ({ email, password }) => {
+    try {
+        const response = await AuthApi.post("/auth/login-user", {
+            email,
+            password
+        });
+        return response.data;
+    } catch (err) {
+        // Prefer the JSON message from the backend response body
+        const message = err.response?.data?.message ?? err.message;
+        throw new Error(message);
     }
 }

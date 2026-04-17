@@ -6,19 +6,16 @@ import { useToast } from "../../../components/Toaster.jsx";
 import { setError } from "../state/auth.slice.js";
 import ContinueWithGoogle from '../components/ContinueWithGoogle';
 
-const Register = () => {
-    const { handleRegisterUser } = useAuth(); // updated to use correct hook name
+const Login = () => {
+    const { handleLoginUser } = useAuth();
     const navigate = useNavigate();
     const toast = useToast();
     const dispatch = useDispatch();
     const { error } = useSelector((state) => state.auth);
 
     const [formData, setFormData] = useState({
-        fullName: '',
-        contactNumber: '',
         email: '',
-        password: '',
-        isSeller: false
+        password: ''
     });
 
     // Fire a toast whenever the Redux error changes
@@ -29,19 +26,16 @@ const Register = () => {
     }, [error, toast]);
 
     const handleChange = (e) => {
-        const { name, value, type, checked } = e.target;
+        const { name, value } = e.target;
         if (error) dispatch(setError(null));
-        setFormData(prev => ({ ...prev, [name]: type === 'checkbox' ? checked : value }));
+        setFormData(prev => ({ ...prev, [name]: value }));
     };
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        const result = await handleRegisterUser({
+        const result = await handleLoginUser({
             email: formData.email,
-            contact: formData.contactNumber,
-            password: formData.password,
-            isSeller: formData.isSeller,
-            fullname: formData.fullName
+            password: formData.password
         });
         if (result?.success) navigate("/");
     };
@@ -125,78 +119,30 @@ const Register = () => {
                                 className="text-[10px] uppercase tracking-[0.22em] mb-4 font-medium"
                                 style={{ color: '#C9A96E' }}
                             >
-                                Welcome to Snitch
+                                Welcome Back
                             </p>
                             <h1
                                 className="text-[2.6rem] xl:text-5xl font-light leading-[1.1]"
                                 style={{ fontFamily: "'Cormorant Garamond', serif", color: '#1b1c1a' }}
                             >
-                                Elevate Your Style
+                                Sign In To Snitch
                             </h1>
                         </div>
 
                         {/* Form */}
                         <form onSubmit={handleSubmit} className="flex flex-col gap-9">
 
-                            {/* Full Name */}
-                            <div className="flex flex-col gap-2">
-                                <label
-                                    htmlFor="reg-fullName"
-                                    className="text-[10px] uppercase tracking-[0.18em] font-medium"
-                                    style={{ color: '#7A6E63' }}
-                                >
-                                    Full Name
-                                </label>
-                                <input
-                                    id="reg-fullName"
-                                    type="text"
-                                    name="fullName"
-                                    value={formData.fullName}
-                                    onChange={handleChange}
-                                    required
-                                    placeholder="e.g. John Doe"
-                                    className="w-full bg-transparent outline-none py-3 text-sm transition-colors duration-300"
-                                    style={inputStyle}
-                                    onFocus={handleFocus}
-                                    onBlur={handleBlur}
-                                />
-                            </div>
-
-                            {/* Contact Number */}
-                            <div className="flex flex-col gap-2">
-                                <label
-                                    htmlFor="reg-contact"
-                                    className="text-[10px] uppercase tracking-[0.18em] font-medium"
-                                    style={{ color: '#7A6E63' }}
-                                >
-                                    Contact Number
-                                </label>
-                                <input
-                                    id="reg-contact"
-                                    type="tel"
-                                    name="contactNumber"
-                                    value={formData.contactNumber}
-                                    onChange={handleChange}
-                                    required
-                                    placeholder="+91 98765 43210"
-                                    className="w-full bg-transparent outline-none py-3 text-sm transition-colors duration-300"
-                                    style={inputStyle}
-                                    onFocus={handleFocus}
-                                    onBlur={handleBlur}
-                                />
-                            </div>
-
                             {/* Email */}
                             <div className="flex flex-col gap-2">
                                 <label
-                                    htmlFor="reg-email"
+                                    htmlFor="login-email"
                                     className="text-[10px] uppercase tracking-[0.18em] font-medium"
                                     style={{ color: '#7A6E63' }}
                                 >
                                     Email Address
                                 </label>
                                 <input
-                                    id="reg-email"
+                                    id="login-email"
                                     type="email"
                                     name="email"
                                     value={formData.email}
@@ -213,14 +159,14 @@ const Register = () => {
                             {/* Password */}
                             <div className="flex flex-col gap-2">
                                 <label
-                                    htmlFor="reg-password"
+                                    htmlFor="login-password"
                                     className="text-[10px] uppercase tracking-[0.18em] font-medium"
                                     style={{ color: '#7A6E63' }}
                                 >
                                     Password
                                 </label>
                                 <input
-                                    id="reg-password"
+                                    id="login-password"
                                     type="password"
                                     name="password"
                                     value={formData.password}
@@ -234,44 +180,7 @@ const Register = () => {
                                 />
                             </div>
 
-                            {/* Register as Seller — minimal checkbox */}
-                            <label
-                                htmlFor="reg-isSeller"
-                                className="flex items-center gap-4 cursor-pointer group"
-                            >
-                                <div className="relative flex-shrink-0">
-                                    <input
-                                        id="reg-isSeller"
-                                        type="checkbox"
-                                        name="isSeller"
-                                        checked={formData.isSeller}
-                                        onChange={handleChange}
-                                        className="peer sr-only"
-                                    />
-                                    {/* Custom checkbox */}
-                                    <div
-                                        className="w-4 h-4 border transition-all duration-200 flex items-center justify-center peer-checked:border-[#C9A96E]"
-                                        style={{
-                                            borderColor: formData.isSeller ? '#C9A96E' : '#d0c5b5',
-                                            backgroundColor: formData.isSeller ? '#C9A96E' : 'transparent'
-                                        }}
-                                    >
-                                        {formData.isSeller && (
-                                            <svg className="w-2.5 h-2.5" viewBox="0 0 12 12" fill="none">
-                                                <path d="M2 6l3 3 5-5" stroke="#fbf9f6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-                                            </svg>
-                                        )}
-                                    </div>
-                                </div>
-                                <span
-                                    className="text-[11px] uppercase tracking-[0.15em] transition-colors duration-200"
-                                    style={{ color: formData.isSeller ? '#C9A96E' : '#7A6E63' }}
-                                >
-                                    Register as Seller
-                                </span>
-                            </label>
-
-                            {/* Sign Up Button */}
+                            {/* Sign In Button */}
                             <button
                                 type="submit"
                                 className="w-full py-4 text-[11px] uppercase tracking-[0.25em] font-medium transition-all duration-300 mt-2"
@@ -285,7 +194,7 @@ const Register = () => {
                                     e.currentTarget.style.color = '#fbf9f6';
                                 }}
                             >
-                                Sign Up
+                                Sign In
                             </button>
 
                             {/* Divider */}
@@ -300,15 +209,15 @@ const Register = () => {
 
                             {/* Footer Link */}
                             <p className="text-center text-[11px]" style={{ color: '#B5ADA3' }}>
-                                Already have an account?{' '}
+                                Don't have an account?{' '}
                                 <Link
-                                    to="/login"
+                                    to="/register"
                                     className="transition-colors duration-200"
                                     style={{ color: '#7A6E63', textDecoration: 'underline', textUnderlineOffset: '3px' }}
                                     onMouseEnter={e => e.target.style.color = '#C9A96E'}
                                     onMouseLeave={e => e.target.style.color = '#7A6E63'}
                                 >
-                                    Sign in
+                                    Create new account
                                 </Link>
                             </p>
                         </form>
@@ -319,4 +228,4 @@ const Register = () => {
     );
 };
 
-export default Register;
+export default Login;
