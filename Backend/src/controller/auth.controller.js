@@ -29,7 +29,7 @@ async function sendTokenResponse(user, res, message) {
 }
 
 export const RegisterController = async (req, res) => {
-  const { email, contact, password, fullname ,isSeller } = req.body;
+  const { email, contact, password, fullname, isSeller } = req.body;
 
   try {
     const existingUser = await userModel.findOne({
@@ -39,7 +39,7 @@ export const RegisterController = async (req, res) => {
     if (existingUser) {
       return res
         .status(400)
-        .json({ message: "User with this email or contact already exists." });
+        .json({ message: "User with this email or contact already exists.", success: false });
     }
 
     const user = await userModel.create({
@@ -47,7 +47,7 @@ export const RegisterController = async (req, res) => {
       contact,
       password,
       fullname,
-      role: isSeller ? "seller" : "buyer",  
+      role: isSeller ? "seller" : "buyer",
     });
 
     await sendTokenResponse(user, res, "User registered successfully.");
@@ -58,3 +58,36 @@ export const RegisterController = async (req, res) => {
     });
   }
 };
+
+
+export const LoginController = async (req, res) => {
+  const { email, password } = req.body;
+
+  try {
+    const user = await userModel.findOne({
+      $or: [{ email }],
+    });
+
+    if (!user) {
+      return res
+        .status(404)
+        .json({ message: "User not found.", success: false });
+    }
+
+    const isPasswordValid = await user.comparePassword(password);
+
+    if (!isPasswordValid) {
+      return res
+        .status(401)
+        .json({ message: "Invalid password.", success: false });
+    }
+
+    await sendTokenResponse(user, res, "User logged in successfully.");
+  } catch (err) {
+    return res.status(500).json({
+      message: "Server",
+      err
+    });
+  }
+}
+

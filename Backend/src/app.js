@@ -2,11 +2,17 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
+import cors from 'cors';
 import Authrouter from './routes/auth.routes.js';
 
 dotenv.config();
 
 const app = express();
+
+app.use(cors({
+  origin: "http://localhost:5173",
+  credentials: true,
+}));
 
 // Middleware
 app.use(morgan('dev'));
@@ -30,7 +36,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: err.message });
 });
 
-app.use('/auth' , Authrouter);
+app.use('/auth', Authrouter);
 
 
 
