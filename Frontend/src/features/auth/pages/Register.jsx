@@ -6,7 +6,6 @@ import { useToast } from "../../../components/Toaster.jsx";
 import { setError } from "../state/auth.slice.js";
 
 
-
 const WavyBackground = () => (
     <svg className="fixed inset-0 w-full h-full pointer-events-none opacity-[0.05] z-0" 
          preserveAspectRatio="none" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000">

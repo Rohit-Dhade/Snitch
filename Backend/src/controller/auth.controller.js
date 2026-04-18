@@ -93,7 +93,40 @@ export const LoginController = async (req, res) => {
 
 
 export const GoogleCallback = async (req, res) => {
-  console.log(req.user);
+  const { id, displayName, emails } = req.user;
+
+  const email = emails[0].value
+
+  let user = await userModel.findOne({
+    email
+  })
+
+  if (!user) {
+    user = await userModel.create({
+      email,
+      fullname: displayName,
+      googleId: id
+    })
+
+  } else {
+    return res.status(400).json({
+      message: "User with this email or contact already exists.",
+      success: false
+    })
+  }
+
+  const token = jwt.sign(
+    {
+      id: user._id,
+    },
+    config.JWT_SECRET,
+    {
+      expiresIn: "7d",
+    },
+  );
+
+  res.cookie("token", token);
+
   res.redirect("http://localhost:5173/");
 }
 

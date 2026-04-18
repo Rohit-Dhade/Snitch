@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { validateRegisterUser, validateLoginUser } from '../validators/auth.validator.js';
-import { RegisterController, LoginController } from '../controller/auth.controller.js';
+import { RegisterController, LoginController , GoogleCallback } from '../controller/auth.controller.js';
 import passport from 'passport';
 
 const Authrouter = Router();
@@ -8,10 +8,8 @@ const Authrouter = Router();
 Authrouter.post('/register-user', validateRegisterUser, RegisterController);
 Authrouter.post('/login-user', validateLoginUser, LoginController);
 Authrouter.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
-Authrouter.get("/google/callback", passport.authenticate('google', { failureRedirect: '/', session: false }),
-    (req, res) => {
-        res.redirect('http://localhost:5173/');
-    }
+Authrouter.get("/google/callback", passport.authenticate('google', { failureRedirect: 'http://localhost:5173/login', session: false }),
+    GoogleCallback
 );
 
 export default Authrouter;
