@@ -91,3 +91,9 @@ export const LoginController = async (req, res) => {
   }
 }
 
+
+export const GoogleCallback = async (req, res) => {
+  console.log(req.user);
+  res.redirect("http://localhost:5173/");
+}
+

@@ -4,6 +4,9 @@ import morgan from 'morgan';
 import dotenv from 'dotenv';
 import cors from 'cors';
 import Authrouter from './routes/auth.routes.js';
+import passport from 'passport';
+import { config } from './config/config.js';
+import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
 
 dotenv.config();
 
@@ -13,6 +16,20 @@ app.use(cors({
   origin: "http://localhost:5173",
   credentials: true,
 }));
+
+app.use(passport.initialize());
+
+passport.use(new GoogleStrategy({
+    clientID: config.GOOGLE_CLIENT_ID,
+    clientSecret: config.GOOGLE_SECRET_ID,
+    callbackURL: '/api/auth/google/callback'
+},
+  (accessToken, refreshToken, profile, done) => {
+
+        console.log('profile:', profile);
+        return done(null, profile);
+    })
+);
 
 // Middleware
 app.use(morgan('dev'));
@@ -36,7 +53,7 @@ app.use((err, req, res, next) => {
   res.status(500).json({ error: err.message });
 });
 
-app.use('/auth', Authrouter);
+app.use('/api/auth', Authrouter);
 
 
 
