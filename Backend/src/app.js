@@ -3,7 +3,10 @@ import cookieParser from 'cookie-parser';
 import morgan from 'morgan';
 import dotenv from 'dotenv';
 import cors from 'cors';
+
 import Authrouter from './routes/auth.routes.js';
+import ProductRouter from './routes/Products.routes.js';
+
 import passport from 'passport';
 import { config } from './config/config.js';
 import { Strategy as GoogleStrategy } from 'passport-google-oauth20';
@@ -20,15 +23,15 @@ app.use(cors({
 app.use(passport.initialize());
 
 passport.use(new GoogleStrategy({
-    clientID: config.GOOGLE_CLIENT_ID,
-    clientSecret: config.GOOGLE_SECRET_ID,
-    callbackURL: '/api/auth/google/callback'
+  clientID: config.GOOGLE_CLIENT_ID,
+  clientSecret: config.GOOGLE_SECRET_ID,
+  callbackURL: '/api/auth/google/callback'
 },
   (accessToken, refreshToken, profile, done) => {
 
-        console.log('profile:', profile);
-        return done(null, profile);
-    })
+    console.log('profile:', profile);
+    return done(null, profile);
+  })
 );
 
 // Middleware
@@ -54,6 +57,7 @@ app.use((err, req, res, next) => {
 });
 
 app.use('/api/auth', Authrouter);
+app.use('/api/product', ProductRouter);
 
 
 
