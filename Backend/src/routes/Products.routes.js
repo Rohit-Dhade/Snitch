@@ -13,7 +13,7 @@ const upload = multer({
     },
 })
 
-ProductRouter.post('/create-product', validateCreateProduct, authenticateSeller, upload.array('images', 7), CreateProductController);
+ProductRouter.post('/create-product', authenticateSeller, upload.array('images', 7), validateCreateProduct, CreateProductController);
 
 ProductRouter.get('/get-product/seller', authenticateSeller, GetSellerProductController);
 
