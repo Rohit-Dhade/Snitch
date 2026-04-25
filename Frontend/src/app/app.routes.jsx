@@ -4,12 +4,13 @@ import Login from "../features/auth/pages/Login.jsx";
 import CreateProduct from "../features/products/pages/CreateProduct.jsx";
 import Protected from "../features/auth/components/protected.jsx";
 import Dashboard from "../features/products/pages/Dashboard.jsx";
+import Home from "../features/products/pages/Home.jsx";
 
 export const router = createBrowserRouter([
     {
         path: "/",
-        element: <h1>Welcome to the Snitch</h1>,
-    },
+        element: <Home />,
+    },  
     {
         path: "/register",
         element: <Register />
@@ -19,13 +20,17 @@ export const router = createBrowserRouter([
         element: <Login />
     },
     {
-        path: "/create-product",
-        element: <CreateProduct />
-    },
-    {
-        path: "/seller/dashboard",
-        element: 
-            <Dashboard />
-        // </Protected>
-    },
+        path: "/seller",
+        children: [
+            {
+                path: "/seller/create-product",
+                element: <Protected role="seller"><CreateProduct /></Protected>
+            },
+            {
+                path: "/seller/dashboard",
+                element:
+                    <Protected role="seller"><Dashboard /></Protected>
+            },
+        ]
+    }
 ]);

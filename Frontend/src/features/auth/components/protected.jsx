@@ -3,10 +3,9 @@ import { useSelector } from "react-redux";
 import { useNavigate } from "react-router-dom";
 import { Navigate } from "react-router-dom";
 
-const Protected = ({ children }) => {
+const Protected = ({ children, role = "buyer" }) => {
     const { user } = useSelector((state) => state.auth);
     const { loading } = useSelector((state) => state.auth);
-    console.log(user);
 
     if (loading) {
         return (

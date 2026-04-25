@@ -58,7 +58,8 @@ const Login = () => {
             password: formData.password
         });
         setLoading(false);
-        if (result?.success) navigate("/");
+        if (result?.success && result?.user?.role === "seller") navigate("/seller/dashboard");
+        else if (result?.success && result?.user?.role === "buyer") navigate("/");
     };
 
     return (
