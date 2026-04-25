@@ -1,6 +1,7 @@
 import { createProduct, getAllSellerProducts } from "../services/product.api.js";
 import { useDispatch } from "react-redux";
 import { setSellerProducts } from "../state/product.slice.js";
+import { useSelector } from "react-redux";
 
 export const useProduct = () => {
     const dispatch = useDispatch();

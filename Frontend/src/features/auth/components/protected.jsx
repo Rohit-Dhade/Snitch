@@ -60,6 +60,10 @@ const Protected = ({ children }) => {
 
     if (!user) return <Navigate to="/login" replace />;
 
+    if (user.role !== role) {
+        return <Navigate to="/" />
+    }
+
     return children;
 };
 

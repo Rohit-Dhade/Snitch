@@ -10,11 +10,8 @@ export const CreateProductController = async (req, res) => {
         return await uploadFile({
             buffer: file.buffer,
             fileName: file.originalname,
-
         })
     }))
-
-    console.log(images)
 
     const product = await ProductModel.create({
         title,
