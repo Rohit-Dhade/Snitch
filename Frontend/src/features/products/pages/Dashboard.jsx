@@ -91,7 +91,7 @@ const Dashboard = () => {
 
                                 return (
                                     <div
-                                        onClick={() => { navigate(`/seller/product/${product._id}`) }}
+                                        onClick={() => { navigate(`/product/${product._id}`) }}
                                         key={product._id} className="group cursor-pointer flex flex-col">
                                         {/* Image Container */}
                                         <div className="aspect-[4/5] overflow-hidden mb-6" style={{ backgroundColor: '#f5f3f0' }}>
