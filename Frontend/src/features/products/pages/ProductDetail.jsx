@@ -7,9 +7,9 @@ const ProductDetail = () => {
     const [product, setProduct] = useState(null);
     const [selectedImage, setSelectedImage] = useState(0);
     const [selectedAttributes, setSelectedAttributes] = useState({});
+    const [isUsingBaseProduct, setIsUsingBaseProduct] = useState(true);
     const navigate = useNavigate();
     const { handleGetProductById } = useProduct();
-    // const { handleAddItem } = useCart()
 
 
     async function fetchProductDetails() {
@@ -28,31 +28,31 @@ const ProductDetail = () => {
     }, [id]);
 
     useEffect(() => {
-        if (product?.variants?.length > 0) {
-            setSelectedAttributes(product.variants[0].attributes || {});
+        // DB field is `variant` (singular), not `variants`.
+        // After .lean() on the backend, variant.attributes is a plain JS object.
+        // Default to showing the base product when loaded.
+        if (product?.variant?.length > 0) {
+            setSelectedAttributes(product.variant[0].attributes || {});
         }
+        setIsUsingBaseProduct(true);
     }, [product]);
 
     const activeVariant = useMemo(() => {
-        if (!product?.variants || product.variants.length === 0) return null;
-        return product.variants.find(v => {
+        if (!product?.variant || product.variant.length === 0) return null;
+        return product.variant.find(v => {
             if (!v.attributes) return false;
             const vKeys = Object.keys(v.attributes);
             const sKeys = Object.keys(selectedAttributes);
             const isMatch = vKeys.every(k => v.attributes[k] === selectedAttributes[k]);
-            // If they don't have exactly the same keys, they shouldn't perfectly match, 
-            // but we might only care about matching what's available.
             return vKeys.length === sKeys.length && isMatch;
         });
     }, [product, selectedAttributes]);
 
 
-    console.log({ product, activeVariant })
-
     const availableAttributes = useMemo(() => {
-        if (!product?.variants) return {};
+        if (!product?.variant) return {};
         const attrs = {};
-        product.variants.forEach(variant => {
+        product.variant.forEach(variant => {
             if (variant.attributes) {
                 Object.entries(variant.attributes).forEach(([key, value]) => {
                     if (!attrs[key]) attrs[key] = new Set();
@@ -74,7 +74,7 @@ const ProductDetail = () => {
         const newAttrs = { ...selectedAttributes, [attrName]: value };
 
         // Find if an exact match exists for this combination
-        const exactMatch = product.variants.find(v => {
+        const exactMatch = product.variant.find(v => {
             const vAttrs = v.attributes || {};
             return Object.keys(newAttrs).every(k => newAttrs[k] === vAttrs[k]) &&
                 Object.keys(vAttrs).every(k => newAttrs[k] === vAttrs[k]);
@@ -84,7 +84,7 @@ const ProductDetail = () => {
             setSelectedAttributes(exactMatch.attributes);
         } else {
             // Find any variant that has this newly selected attribute to fallback nicely
-            const fallbackVariant = product.variants.find(v => v.attributes && v.attributes[attrName] === value);
+            const fallbackVariant = product.variant.find(v => v.attributes && v.attributes[attrName] === value);
             if (fallbackVariant) {
                 setSelectedAttributes(fallbackVariant.attributes);
             } else {
@@ -103,16 +103,18 @@ const ProductDetail = () => {
         );
     }
 
-    console.log(product)
-
-    // Fallbacks
-    const displayImages = (activeVariant?.images && activeVariant.images.length > 0)
+    // If isUsingBaseProduct is true, always display the base product data regardless of activeVariant.
+    const displayImages = (!isUsingBaseProduct && activeVariant?.images?.length > 0)
         ? activeVariant.images
-        : (product.images && product.images.length > 0 ? product.images : [{ url: '/snitch_editorial_warm.png' }]);
+        : (product.images?.length > 0 ? product.images : [{ url: '/snitch_editorial_warm.png' }]);
 
-    const displayPrice = activeVariant?.price?.amount
+    const displayPrice = (!isUsingBaseProduct && activeVariant?.price?.amount)
         ? activeVariant.price
         : product.price;
+
+    const displayStock = !isUsingBaseProduct && activeVariant != null
+        ? activeVariant.stock
+        : null; // base product has no aggregate stock field
 
     return (
         <>
@@ -208,7 +210,56 @@ const ProductDetail = () => {
                             <div className="h-px w-full mb-8" style={{ backgroundColor: '#e4e2df' }} />
 
                             {/* Options/Variants */}
-                            {Object.entries(availableAttributes).map(([attrName, values]) => (
+                            {product.variant?.length > 0 && (
+                                <div className="mb-4">
+                                    <h3 className="text-[10px] uppercase tracking-[0.24em] font-medium mb-3" style={{ color: '#C9A96E' }}>
+                                        View As
+                                    </h3>
+                                    <div className="flex flex-wrap gap-2 mb-6">
+                                        {/* Original / Base product toggle */}
+                                        <button
+                                            onClick={() => {
+                                                setIsUsingBaseProduct(true);
+                                                setSelectedAttributes({});
+                                            }}
+                                            className={`px-4 py-2 text-[11px] uppercase tracking-[0.15em] font-medium transition-all duration-300 border ${isUsingBaseProduct
+                                                    ? 'border-[#C9A96E] bg-[#C9A96E] text-[#1b1c1a]'
+                                                    : 'border-[#d0c5b5] text-[#1b1c1a] hover:border-[#C9A96E]'
+                                                }`}
+                                            style={isUsingBaseProduct ? {} : { backgroundColor: 'transparent' }}
+                                        >
+                                            Original
+                                        </button>
+
+                                        {/* One button per variant */}
+                                        {product.variant.map((v, idx) => {
+                                            const label = v.attributes
+                                                ? Object.values(v.attributes).join(' / ')
+                                                : `Variant ${idx + 1}`;
+                                            const isActive = !isUsingBaseProduct && activeVariant === v;
+                                            return (
+                                                <button
+                                                    key={v._id || idx}
+                                                    onClick={() => {
+                                                        setIsUsingBaseProduct(false);
+                                                        setSelectedAttributes(v.attributes || {});
+                                                    }}
+                                                    className={`px-4 py-2 text-[11px] uppercase tracking-[0.15em] font-medium transition-all duration-300 border ${isActive
+                                                            ? 'border-[#1b1c1a] bg-[#1b1c1a] text-[#fbf9f6]'
+                                                            : 'border-[#d0c5b5] text-[#1b1c1a] hover:border-[#1b1c1a]'
+                                                        }`}
+                                                    style={isActive ? {} : { backgroundColor: 'transparent' }}
+                                                >
+                                                    Variants
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Fine-grained attribute selectors (only when not on base product) */}
+                            {!isUsingBaseProduct && Object.entries(availableAttributes).map(([attrName, values]) => (
                                 <div key={attrName} className="mb-6">
                                     <h3 className="text-[10px] uppercase tracking-[0.24em] font-medium mb-3" style={{ color: '#C9A96E' }}>
                                         {attrName}
@@ -219,7 +270,10 @@ const ProductDetail = () => {
                                             return (
                                                 <button
                                                     key={val}
-                                                    onClick={() => handleAttributeChange(attrName, val)}
+                                                    onClick={() => {
+                                                        setIsUsingBaseProduct(false);
+                                                        handleAttributeChange(attrName, val);
+                                                    }}
                                                     className={`px-4 py-2 text-[11px] uppercase tracking-[0.15em] font-medium transition-all duration-300 border ${isSelected ? 'border-[#1b1c1a] bg-[#1b1c1a] text-[#fbf9f6]' : 'border-[#d0c5b5] text-[#1b1c1a] hover:border-[#1b1c1a]'}`}
                                                     style={isSelected ? {} : { backgroundColor: 'transparent' }}
                                                 >
@@ -232,10 +286,10 @@ const ProductDetail = () => {
                             ))}
 
                             {/* Stock Information */}
-                            {activeVariant && activeVariant.stock !== undefined && (
+                            {displayStock !== null && displayStock !== undefined && (
                                 <div className="mb-6">
-                                    <span className={`text-[10px] uppercase tracking-[0.2em] font-medium ${activeVariant.stock > 0 ? 'text-green-700' : 'text-red-700'}`}>
-                                        {activeVariant.stock > 0 ? `${activeVariant.stock} in stock` : 'Out of stock'}
+                                    <span className={`text-[10px] uppercase tracking-[0.2em] font-medium ${displayStock > 0 ? 'text-green-700' : 'text-red-700'}`}>
+                                        {displayStock > 0 ? `${displayStock} in stock` : 'Out of stock'}
                                     </span>
                                 </div>
                             )}

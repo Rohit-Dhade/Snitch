@@ -56,7 +56,11 @@ export const GetAllProductController = async (req, res) => {
 
 export const GetProductByIdController = async (req, res) => {
     const { id } = req.params;
-    const product = await ProductModel.findById(id);
+
+    // .lean() converts Mongoose documents (including Map fields like `attributes`)
+    // into plain JS objects so they serialize correctly as JSON.
+    const product = await ProductModel.findById(id).lean();
+
     if (!product) {
         return res.status(404).json({
             success: false,
@@ -77,15 +81,16 @@ export const AddVariantController = async (req, res) => {
 
         const product = await ProductModel.findById(productId);
 
-        if (product.seller.toString() !== req.user._id.toString()) {
-            return res.status(403).json({ message: "Unauthorized" });
-        }
-
+        // null-check must come before any property access
         if (!product) {
             return res.status(404).json({
                 success: false,
                 message: "Product not found",
             });
+        }
+
+        if (product.seller.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: "Unauthorized" });
         }
 
         const parseAttributes = JSON.parse(attributes);
