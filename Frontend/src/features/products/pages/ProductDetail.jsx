@@ -2,14 +2,16 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { useParams } from 'react-router';
 import { useSelector } from 'react-redux';
 import { useProduct } from '../hook/useProduct';
+import useCart from '../../cart/hook/useCart';
 import AddVariantModal from '../components/AddVariantModal';
 
 const ProductDetail = () => {
     const { id } = useParams();
-    const [product, setProduct]               = useState(null);
+    const [product, setProduct] = useState(null);
+    const { handleAddToCart } = useCart();
     const [selectedColorIdx, setSelectedColorIdx] = useState(null); // index into product.variant[]
-    const [selectedSize, setSelectedSize]     = useState(null);
-    const [selectedImage, setSelectedImage]   = useState(0);
+    const [selectedSize, setSelectedSize] = useState(null);
+    const [selectedImage, setSelectedImage] = useState(0);
     const [showVariantModal, setShowVariantModal] = useState(false);
 
     const { handleGetProductById } = useProduct();
@@ -319,7 +321,17 @@ const ProductDetail = () => {
                                 {/* Buyer actions */}
                                 {!isOwnerSeller && (
                                     <>
-                                        <button
+                                        <button onClick={() => {
+                                            if (!activeVariant) {
+                                                alert("Please select a colour first");
+                                                return;
+                                            }
+                                            if (!selectedSize) {
+                                                alert("Please select a size first");
+                                                return;
+                                            }
+                                            handleAddToCart(id, activeVariant._id, 1, activeSizeEntry?.price ?? displayPrice, selectedSize);
+                                        }}
                                             className="w-full py-4 text-[11px] uppercase tracking-[0.25em] font-medium transition-all duration-300"
                                             style={{ backgroundColor: '#1b1c1a', color: '#fbf9f6', fontFamily: "'Inter', sans-serif" }}
                                             onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#C9A96E'; e.currentTarget.style.color = '#1b1c1a'; }}
