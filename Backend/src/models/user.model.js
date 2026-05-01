@@ -16,6 +16,7 @@ const userSchema = new mongoose.Schema({
     default: "buyer",
   },
   googleId: { type: String },
+  needsRoleSetup: { type: Boolean, default: false },
 });
 
 userSchema.pre("save", async function () {

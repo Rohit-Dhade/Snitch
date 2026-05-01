@@ -93,41 +93,52 @@ export const LoginController = async (req, res) => {
 
 
 export const GoogleCallback = async (req, res) => {
-  const { id, displayName, emails } = req.user;
+  try {
+    const { id, displayName, emails } = req.user;
+    const email = emails[0].value;
 
-  const email = emails[0].value
+    // Find existing user or create a new one (upsert)
+    let user = await userModel.findOne({ email });
 
-  let user = await userModel.findOne({
-    email
-  })
+    if (!user) {
+      user = await userModel.create({
+        email,
+        fullname: displayName,
+        googleId: id,
+        needsRoleSetup: true,  // new Google users must pick buyer/seller
+      });
+    } else if (!user.googleId) {
+      // Link Google ID to existing email account
+      user.googleId = id;
+      await user.save();
+    }
 
-  if (!user) {
-    user = await userModel.create({
-      email,
-      fullname: displayName,
-      googleId: id
-    })
+    const token = jwt.sign(
+      { id: user._id },
+      config.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
 
-  } else {
-    return res.status(400).json({
-      message: "User with this email or contact already exists.",
-      success: false
-    })
+    // httpOnly so JS can't read it; SameSite=Lax works for same-site redirects
+    res.cookie("token", token, {
+      httpOnly: true,
+      sameSite: "lax",
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
+    });
+
+    // Redirect based on role — mirrors what manual login does in the frontend
+    if (user.needsRoleSetup) {
+      // New Google user — go to home so RoleSetupModal can appear
+      res.redirect("http://localhost:5173/");
+    } else if (user.role === 'seller') {
+      res.redirect("http://localhost:5173/seller/dashboard");
+    } else {
+      res.redirect("http://localhost:5173/");
+    }
+  } catch (err) {
+    console.error("GoogleCallback error:", err);
+    res.redirect("http://localhost:5173/login?error=google_failed");
   }
-
-  const token = jwt.sign(
-    {
-      id: user._id,
-    },
-    config.JWT_SECRET,
-    {
-      expiresIn: "7d",
-    },
-  );
-
-  res.cookie("token", token);
-
-  res.redirect("http://localhost:5173/");
 }
 
 export const GetMe = async (req, res) => {
@@ -139,8 +150,37 @@ export const GetMe = async (req, res) => {
       contact: req.user.contact,
       fullname: req.user.fullname,
       role: req.user.role,
+      needsRoleSetup: req.user.needsRoleSetup ?? false,
     },
     success: true,
   })
+}
+
+export const SetRole = async (req, res) => {
+  try {
+    const { role } = req.body;
+    if (!['buyer', 'seller'].includes(role)) {
+      return res.status(400).json({ message: 'Invalid role. Must be buyer or seller.', success: false });
+    }
+    const user = await userModel.findByIdAndUpdate(
+      req.user._id,
+      { role, needsRoleSetup: false },
+      { new: true }
+    );
+    return res.status(200).json({
+      message: 'Role updated successfully.',
+      success: true,
+      user: {
+        id: user._id,
+        email: user.email,
+        contact: user.contact,
+        fullname: user.fullname,
+        role: user.role,
+        needsRoleSetup: false,
+      },
+    });
+  } catch (err) {
+    return res.status(500).json({ message: 'Server error', err });
+  }
 }
 

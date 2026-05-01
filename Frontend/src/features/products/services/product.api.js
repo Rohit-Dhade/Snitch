@@ -40,3 +40,12 @@ export const getProductById = async (id) => {
         throw error;
     }
 };
+
+export const addVariant = async (productId, formData) => {
+    try {
+        const response = await productApi.post(`/add-variant/${productId}`, formData);
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+};

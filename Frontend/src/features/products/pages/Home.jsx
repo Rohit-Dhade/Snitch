@@ -3,6 +3,7 @@ import { useSelector } from 'react-redux';
 import { useProduct } from '../hook/useProduct';
 import { Link } from 'react-router';
 import { useNavigate } from 'react-router';
+import RoleSetupModal from '../../auth/components/RoleSetupModal';
 
 const Home = () => {
     const products = useSelector(state => state.product.products);
@@ -17,6 +18,8 @@ const Home = () => {
 
     return (
         <>
+            {/* Role setup modal for new Google users */}
+            {user?.needsRoleSetup && <RoleSetupModal />}
             {/* Google Fonts */}
             <link
                 href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Inter:wght@300;400;500;600&display=swap"

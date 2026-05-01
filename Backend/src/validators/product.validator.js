@@ -15,5 +15,6 @@ export const validateCreateProduct = [
     body("description").notEmpty().withMessage("Description is required"),
     body("priceAmount").notEmpty().withMessage("Price amount is required"),
     body("priceCurrency").notEmpty().withMessage("Price currency is required"),
+    body("color").notEmpty().withMessage("Color is required"),
     validateRequest,
 ]

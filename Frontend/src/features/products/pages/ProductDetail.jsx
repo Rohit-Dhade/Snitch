@@ -1,124 +1,88 @@
 import React, { useEffect, useState, useMemo } from 'react';
-import { useParams, Link, useNavigate } from 'react-router';
+import { useParams } from 'react-router';
+import { useSelector } from 'react-redux';
 import { useProduct } from '../hook/useProduct';
+import AddVariantModal from '../components/AddVariantModal';
 
 const ProductDetail = () => {
     const { id } = useParams();
-    const [product, setProduct] = useState(null);
-    const [selectedImage, setSelectedImage] = useState(0);
-    const [selectedAttributes, setSelectedAttributes] = useState({});
-    const [isUsingBaseProduct, setIsUsingBaseProduct] = useState(true);
-    const navigate = useNavigate();
+    const [product, setProduct]               = useState(null);
+    const [selectedColorIdx, setSelectedColorIdx] = useState(null); // index into product.variant[]
+    const [selectedSize, setSelectedSize]     = useState(null);
+    const [selectedImage, setSelectedImage]   = useState(0);
+    const [showVariantModal, setShowVariantModal] = useState(false);
+
     const { handleGetProductById } = useProduct();
+    const currentUser = useSelector(state => state.auth.user);
 
+    const isOwnerSeller = useMemo(() => {
+        if (currentUser?.role !== 'seller') return false;
+        if (!product?.seller) return false;
+        const sellerId = String(product.seller?._id ?? product.seller);
+        const userId   = String(currentUser.id ?? currentUser._id ?? '');
+        return !!userId && sellerId === userId;
+    }, [currentUser, product]);
 
-    async function fetchProductDetails() {
-        try {
-            const productData = await handleGetProductById(id);
-            setProduct(productData);
-        } catch (error) {
-            console.error("Failed to fetch product details", error);
-        }
-    }
-
+    /* ── fetch ── */
     useEffect(() => {
         if (id) {
-            fetchProductDetails();
+            handleGetProductById(id)
+                .then(data => setProduct(data))
+                .catch(err => console.error('Failed to fetch product', err));
         }
     }, [id]);
 
-    useEffect(() => {
-        // DB field is `variant` (singular), not `variants`.
-        // After .lean() on the backend, variant.attributes is a plain JS object.
-        // Default to showing the base product when loaded.
-        if (product?.variant?.length > 0) {
-            setSelectedAttributes(product.variant[0].attributes || {});
-        }
-        setIsUsingBaseProduct(true);
-    }, [product]);
+    /* ── derived ── */
+    const hasVariants = product?.variant?.length > 0;
 
-    const activeVariant = useMemo(() => {
-        if (!product?.variant || product.variant.length === 0) return null;
-        return product.variant.find(v => {
-            if (!v.attributes) return false;
-            const vKeys = Object.keys(v.attributes);
-            const sKeys = Object.keys(selectedAttributes);
-            const isMatch = vKeys.every(k => v.attributes[k] === selectedAttributes[k]);
-            return vKeys.length === sKeys.length && isMatch;
-        });
-    }, [product, selectedAttributes]);
+    // The active color variant object
+    const activeVariant = useMemo(
+        () => (selectedColorIdx !== null ? product?.variant?.[selectedColorIdx] : null),
+        [product, selectedColorIdx]
+    );
 
+    // Images shown in the gallery
+    const displayImages = useMemo(() => {
+        if (activeVariant?.images?.length > 0) return activeVariant.images;
+        if (product?.images?.length > 0) return product.images;
+        return [{ url: '/snitch_editorial_warm.png' }];
+    }, [activeVariant, product]);
 
-    const availableAttributes = useMemo(() => {
-        if (!product?.variant) return {};
-        const attrs = {};
-        product.variant.forEach(variant => {
-            if (variant.attributes) {
-                Object.entries(variant.attributes).forEach(([key, value]) => {
-                    if (!attrs[key]) attrs[key] = new Set();
-                    attrs[key].add(value);
-                });
-            }
-        });
-        Object.keys(attrs).forEach(key => {
-            attrs[key] = Array.from(attrs[key]);
-        });
-        return attrs;
-    }, [product]);
+    // Sizes available for the active color
+    const activeSizes = useMemo(
+        () => activeVariant?.sizes ?? [],
+        [activeVariant]
+    );
 
-    useEffect(() => {
-        setSelectedImage(0);
-    }, [activeVariant]);
+    // The selected size entry
+    const activeSizeEntry = useMemo(
+        () => activeSizes.find(s => s.size === selectedSize) ?? null,
+        [activeSizes, selectedSize]
+    );
 
-    const handleAttributeChange = (attrName, value) => {
-        const newAttrs = { ...selectedAttributes, [attrName]: value };
+    // Price: prefer selected size price, then base product price
+    const displayPrice = activeSizeEntry?.price ?? activeVariant?.sizes?.[0]?.price ?? product?.price;
 
-        // Find if an exact match exists for this combination
-        const exactMatch = product.variant.find(v => {
-            const vAttrs = v.attributes || {};
-            return Object.keys(newAttrs).every(k => newAttrs[k] === vAttrs[k]) &&
-                Object.keys(vAttrs).every(k => newAttrs[k] === vAttrs[k]);
-        });
+    // Stock
+    const displayStock = activeSizeEntry?.stock ?? null;
 
-        if (exactMatch) {
-            setSelectedAttributes(exactMatch.attributes);
-        } else {
-            // Find any variant that has this newly selected attribute to fallback nicely
-            const fallbackVariant = product.variant.find(v => v.attributes && v.attributes[attrName] === value);
-            if (fallbackVariant) {
-                setSelectedAttributes(fallbackVariant.attributes);
-            } else {
-                setSelectedAttributes(newAttrs);
-            }
-        }
-    };
+    /* ── reset image when color changes ── */
+    useEffect(() => { setSelectedImage(0); setSelectedSize(null); }, [selectedColorIdx]);
 
+    /* ── loading ── */
     if (!product) {
         return (
-            <div className="min-h-screen flex items-center justify-center selection:bg-[#C9A96E]/30" style={{ backgroundColor: '#fbf9f6' }}>
-                <p style={{ fontFamily: "'Inter', sans-serif", color: '#B5ADA3' }} className="text-[10px] uppercase tracking-[0.2em] font-medium animate-pulse">
+            <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#fbf9f6' }}>
+                <p style={{ fontFamily: "'Inter', sans-serif", color: '#B5ADA3' }}
+                    className="text-[10px] uppercase tracking-[0.2em] font-medium animate-pulse">
                     Retrieving piece...
                 </p>
             </div>
         );
     }
 
-    // If isUsingBaseProduct is true, always display the base product data regardless of activeVariant.
-    const displayImages = (!isUsingBaseProduct && activeVariant?.images?.length > 0)
-        ? activeVariant.images
-        : (product.images?.length > 0 ? product.images : [{ url: '/snitch_editorial_warm.png' }]);
-
-    const displayPrice = (!isUsingBaseProduct && activeVariant?.price?.amount)
-        ? activeVariant.price
-        : product.price;
-
-    const displayStock = !isUsingBaseProduct && activeVariant != null
-        ? activeVariant.stock
-        : null; // base product has no aggregate stock field
-
     return (
         <>
-            {/* Google Fonts */}
             <link
                 href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Inter:wght@300;400;500;600&display=swap"
                 rel="stylesheet"
@@ -128,16 +92,15 @@ const ProductDetail = () => {
                 className="min-h-screen selection:bg-[#C9A96E]/30 pb-24"
                 style={{ backgroundColor: '#fbf9f6', fontFamily: "'Inter', sans-serif" }}
             >
-
                 <div className="max-w-7xl mx-auto px-8 lg:px-16 xl:px-24 pt-12 lg:pt-20">
                     <div className="flex flex-col lg:flex-row gap-12 lg:gap-24 items-start">
 
                         {/* ── LEFT: Image Gallery ── */}
                         <div className="w-full lg:w-[70%] flex flex-col-reverse md:flex-row gap-4 lg:gap-6">
 
-                            {/* Thumbnails (Vertical on Desktop, Horizontal on Mobile) */}
+                            {/* Thumbnails */}
                             {displayImages.length > 1 && (
-                                <div className="flex flex-row md:flex-col gap-4 overflow-x-auto md:overflow-y-auto pb-2 md:pb-0 scrollbar-hide w-full md:w-20 lg:w-24 flex-shrink-0 md:max-h-[calc(100vh-200px)]">
+                                <div className="flex flex-row md:flex-col gap-4 overflow-x-auto md:overflow-y-auto pb-2 md:pb-0 w-full md:w-20 lg:w-24 flex-shrink-0 md:max-h-[calc(100vh-200px)]">
                                     {displayImages.map((img, idx) => (
                                         <button
                                             key={idx}
@@ -145,21 +108,18 @@ const ProductDetail = () => {
                                             className={`flex-shrink-0 w-20 md:w-full aspect-[4/5] overflow-hidden transition-all duration-300 ${selectedImage === idx ? 'opacity-100 ring-1 ring-[#C9A96E] ring-offset-2' : 'opacity-50 hover:opacity-100'}`}
                                             style={{ backgroundColor: '#f5f3f0', '--tw-ring-offset-color': '#fbf9f6' }}
                                         >
-                                            <img
-
-                                                src={img.url} alt={`View ${idx + 1}`} className="w-full h-full object-cover" />
+                                            <img src={img.url} alt={`View ${idx + 1}`} className="w-full h-full object-cover" />
                                         </button>
                                     ))}
                                 </div>
                             )}
 
-                            {/* Main Image */}
-                            <div className="relative w-full aspect-4/5 overflow-hidden group" style={{ backgroundColor: '#f5f3f0' }}>
+                            {/* Main image */}
+                            <div className="relative w-full aspect-[4/5] overflow-hidden group" style={{ backgroundColor: '#f5f3f0' }}>
                                 <img
-                                    src={displayImages[selectedImage]?.url || displayImages[0].url}
+                                    src={displayImages[selectedImage]?.url || displayImages[0]?.url}
                                     alt={product.title}
                                     className="w-full h-full object-cover transition-opacity duration-500"
-
                                 />
                                 {displayImages.length > 1 && (
                                     <>
@@ -167,8 +127,6 @@ const ProductDetail = () => {
                                             onClick={() => setSelectedImage(prev => prev === 0 ? displayImages.length - 1 : prev - 1)}
                                             className="absolute left-4 lg:left-6 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 border"
                                             style={{ backgroundColor: 'rgba(251,249,246,0.8)', borderColor: '#e4e2df', color: '#1b1c1a' }}
-                                            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fbf9f6'}
-                                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(251,249,246,0.8)'}
                                             aria-label="Previous image"
                                         >
                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.2" d="M15 19l-7-7 7-7" /></svg>
@@ -177,8 +135,6 @@ const ProductDetail = () => {
                                             onClick={() => setSelectedImage(prev => prev === displayImages.length - 1 ? 0 : prev + 1)}
                                             className="absolute right-4 lg:right-6 top-1/2 -translate-y-1/2 w-10 h-10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all duration-300 border"
                                             style={{ backgroundColor: 'rgba(251,249,246,0.8)', borderColor: '#e4e2df', color: '#1b1c1a' }}
-                                            onMouseEnter={e => e.currentTarget.style.backgroundColor = '#fbf9f6'}
-                                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'rgba(251,249,246,0.8)'}
                                             aria-label="Next image"
                                         >
                                             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="1.2" d="M9 5l7 7-7 7" /></svg>
@@ -199,58 +155,124 @@ const ProductDetail = () => {
                             </h1>
 
                             <div className="mb-8">
-                                <span
-                                    className="text-sm uppercase tracking-[0.2em] font-medium"
-                                    style={{ color: '#1b1c1a' }}
-                                >
+                                <span className="text-sm uppercase tracking-[0.2em] font-medium" style={{ color: '#1b1c1a' }}>
                                     {displayPrice?.currency} {displayPrice?.amount?.toLocaleString()}
                                 </span>
                             </div>
 
                             <div className="h-px w-full mb-8" style={{ backgroundColor: '#e4e2df' }} />
 
-                            {/* Options/Variants */}
-                            {product.variant?.length > 0 && (
-                                <div className="mb-4">
+                            {/* ── Colour Swatches ── */}
+                            {(hasVariants || product?.color) && (
+                                <div className="mb-8">
                                     <h3 className="text-[10px] uppercase tracking-[0.24em] font-medium mb-3" style={{ color: '#C9A96E' }}>
-                                        View As
+                                        Colour
+                                        <span style={{ color: '#1b1c1a', marginLeft: '8px', textTransform: 'none', letterSpacing: 0, fontSize: '11px' }}>
+                                            — {activeVariant ? activeVariant.color : (product?.color || 'Original')}
+                                        </span>
                                     </h3>
-                                    <div className="flex flex-wrap gap-2 mb-6">
-                                        {/* Original / Base product toggle */}
-                                        <button
-                                            onClick={() => {
-                                                setIsUsingBaseProduct(true);
-                                                setSelectedAttributes({});
-                                            }}
-                                            className={`px-4 py-2 text-[11px] uppercase tracking-[0.15em] font-medium transition-all duration-300 border ${isUsingBaseProduct
-                                                    ? 'border-[#C9A96E] bg-[#C9A96E] text-[#1b1c1a]'
-                                                    : 'border-[#d0c5b5] text-[#1b1c1a] hover:border-[#C9A96E]'
-                                                }`}
-                                            style={isUsingBaseProduct ? {} : { backgroundColor: 'transparent' }}
-                                        >
-                                            Original
-                                        </button>
+                                    <div className="flex flex-wrap gap-3">
+                                        {/* Base product colour swatch */}
+                                        {(() => {
+                                            const isBase = selectedColorIdx === null;
+                                            // Simple name→hex map; falls back to a neutral tone
+                                            const BASE_COLORS = {
+                                                black: '#1b1c1a', white: '#f5f3f0', red: '#c0392b',
+                                                blue: '#2c3e8c', navy: '#1a2350', green: '#2e7d52',
+                                                olive: '#6b6e3a', grey: '#888888', gray: '#888888',
+                                                brown: '#7a5230', beige: '#d4b896', cream: '#e8dcc8',
+                                                yellow: '#d4a017', orange: '#c0612b', pink: '#c06080',
+                                                purple: '#6a3080', maroon: '#7a1c2a', khaki: '#9b8b5a',
+                                                original: '#1b1c1a'
+                                            };
+                                            const baseColorName = product?.color || 'Original';
+                                            const key = baseColorName.toLowerCase().split(' ').find(w => BASE_COLORS[w]) || baseColorName.toLowerCase();
+                                            const hex = BASE_COLORS[key] || '#888888';
+                                            return (
+                                                <button
+                                                    key="base"
+                                                    onClick={() => setSelectedColorIdx(null)}
+                                                    title={baseColorName}
+                                                    className="relative flex-shrink-0 transition-transform duration-200 hover:scale-110"
+                                                    style={{
+                                                        width: 28, height: 28, borderRadius: '50%',
+                                                        backgroundColor: hex,
+                                                        boxShadow: isBase
+                                                            ? `0 0 0 2px #fbf9f6, 0 0 0 3.5px ${hex}`
+                                                            : '0 0 0 1px rgba(0,0,0,0.12)',
+                                                        border: 'none',
+                                                        cursor: 'pointer',
+                                                    }}
+                                                    aria-label={baseColorName}
+                                                    aria-pressed={isBase}
+                                                />
+                                            );
+                                        })()}
 
-                                        {/* One button per variant */}
-                                        {product.variant.map((v, idx) => {
-                                            const label = v.attributes
-                                                ? Object.values(v.attributes).join(' / ')
-                                                : `Variant ${idx + 1}`;
-                                            const isActive = !isUsingBaseProduct && activeVariant === v;
+                                        {/* Colour variant swatches */}
+                                        {product.variant?.map((v, idx) => {
+                                            const isActive = selectedColorIdx === idx;
                                             return (
                                                 <button
                                                     key={v._id || idx}
-                                                    onClick={() => {
-                                                        setIsUsingBaseProduct(false);
-                                                        setSelectedAttributes(v.attributes || {});
+                                                    onClick={() => setSelectedColorIdx(isActive ? null : idx)}
+                                                    title={v.color}
+                                                    className="relative flex-shrink-0 transition-transform duration-200 hover:scale-110"
+                                                    style={{
+                                                        width: 28, height: 28, borderRadius: '50%',
+                                                        backgroundColor: v.colorHex || '#888888',
+                                                        boxShadow: isActive
+                                                            ? `0 0 0 2px #fbf9f6, 0 0 0 3.5px ${v.colorHex || '#888888'}`
+                                                            : '0 0 0 1px rgba(0,0,0,0.12)',
+                                                        border: 'none',
+                                                        cursor: 'pointer',
                                                     }}
-                                                    className={`px-4 py-2 text-[11px] uppercase tracking-[0.15em] font-medium transition-all duration-300 border ${isActive
+                                                    aria-label={v.color}
+                                                    aria-pressed={isActive}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* ── Size Selector ── */}
+                            {activeVariant && activeSizes.length > 0 && (
+                                <div className="mb-8">
+                                    <h3 className="text-[10px] uppercase tracking-[0.24em] font-medium mb-3" style={{ color: '#C9A96E' }}>
+                                        Size
+                                    </h3>
+                                    <div className="flex flex-wrap gap-2">
+                                        {activeSizes.map(s => {
+                                            const isSelected = selectedSize === s.size;
+                                            const outOfStock = s.stock === 0;
+                                            return (
+                                                <button
+                                                    key={s.size}
+                                                    onClick={() => !outOfStock && setSelectedSize(isSelected ? null : s.size)}
+                                                    disabled={outOfStock}
+                                                    className={`px-4 py-2 text-[11px] uppercase tracking-[0.15em] font-medium transition-all duration-200 border relative ${
+                                                        isSelected
                                                             ? 'border-[#1b1c1a] bg-[#1b1c1a] text-[#fbf9f6]'
-                                                            : 'border-[#d0c5b5] text-[#1b1c1a] hover:border-[#1b1c1a]'
-                                                        }`}
-                                                    style={isActive ? {} : { backgroundColor: 'transparent' }}
+                                                            : outOfStock
+                                                                ? 'border-[#e4e2df] text-[#B5ADA3] cursor-not-allowed'
+                                                                : 'border-[#d0c5b5] text-[#1b1c1a] hover:border-[#1b1c1a]'
+                                                    }`}
+                                                    style={isSelected ? {} : { backgroundColor: 'transparent' }}
                                                 >
-                                                    Variants
+                                                    {s.size}
+                                                    {outOfStock && (
+                                                        <span
+                                                            className="absolute inset-0 flex items-center justify-center"
+                                                            style={{ pointerEvents: 'none' }}
+                                                        >
+                                                            <span style={{
+                                                                position: 'absolute', width: '70%',
+                                                                height: '1px', backgroundColor: '#B5ADA3',
+                                                                transform: 'rotate(-20deg)',
+                                                            }} />
+                                                        </span>
+                                                    )}
                                                 </button>
                                             );
                                         })}
@@ -258,35 +280,8 @@ const ProductDetail = () => {
                                 </div>
                             )}
 
-                            {/* Fine-grained attribute selectors (only when not on base product) */}
-                            {!isUsingBaseProduct && Object.entries(availableAttributes).map(([attrName, values]) => (
-                                <div key={attrName} className="mb-6">
-                                    <h3 className="text-[10px] uppercase tracking-[0.24em] font-medium mb-3" style={{ color: '#C9A96E' }}>
-                                        {attrName}
-                                    </h3>
-                                    <div className="flex flex-wrap gap-2">
-                                        {values.map(val => {
-                                            const isSelected = selectedAttributes[attrName] === val;
-                                            return (
-                                                <button
-                                                    key={val}
-                                                    onClick={() => {
-                                                        setIsUsingBaseProduct(false);
-                                                        handleAttributeChange(attrName, val);
-                                                    }}
-                                                    className={`px-4 py-2 text-[11px] uppercase tracking-[0.15em] font-medium transition-all duration-300 border ${isSelected ? 'border-[#1b1c1a] bg-[#1b1c1a] text-[#fbf9f6]' : 'border-[#d0c5b5] text-[#1b1c1a] hover:border-[#1b1c1a]'}`}
-                                                    style={isSelected ? {} : { backgroundColor: 'transparent' }}
-                                                >
-                                                    {val}
-                                                </button>
-                                            );
-                                        })}
-                                    </div>
-                                </div>
-                            ))}
-
-                            {/* Stock Information */}
-                            {displayStock !== null && displayStock !== undefined && (
+                            {/* ── Stock badge ── */}
+                            {displayStock !== null && (
                                 <div className="mb-6">
                                     <span className={`text-[10px] uppercase tracking-[0.2em] font-medium ${displayStock > 0 ? 'text-green-700' : 'text-red-700'}`}>
                                         {displayStock > 0 ? `${displayStock} in stock` : 'Out of stock'}
@@ -294,6 +289,7 @@ const ProductDetail = () => {
                                 </div>
                             )}
 
+                            {/* ── Description ── */}
                             <div className="mb-12">
                                 <h3 className="text-[10px] uppercase tracking-[0.24em] font-medium mb-4" style={{ color: '#C9A96E' }}>
                                     The Details
@@ -303,65 +299,56 @@ const ProductDetail = () => {
                                 </p>
                             </div>
 
-                            {/* Actions */}
+                            {/* ── Actions ── */}
                             <div className="flex flex-col gap-4 mt-auto">
-                                <button
-                                    className="w-full py-4 text-[11px] uppercase tracking-[0.25em] font-medium transition-all duration-300"
-                                    style={{
-                                        backgroundColor: '#1b1c1a',
-                                        color: '#fbf9f6',
-                                        fontFamily: "'Inter', sans-serif"
-                                    }}
-                                    onMouseEnter={e => {
-                                        e.currentTarget.style.backgroundColor = '#C9A96E';
-                                        e.currentTarget.style.color = '#1b1c1a';
-                                    }}
-                                    onMouseLeave={e => {
-                                        e.currentTarget.style.backgroundColor = '#1b1c1a';
-                                        e.currentTarget.style.color = '#fbf9f6';
-                                    }}
-                                    onClick={() => {
-                                        // handleAddItem({
-                                        //     productId: product._id,
-                                        //     variantId: activeVariant?._id
-                                        // })
-                                    }}
-                                >
-                                    Add to Cart
-                                </button>
 
-                                <button
-                                    className="w-full py-4 text-[11px] uppercase tracking-[0.25em] font-medium transition-all duration-300 border"
-                                    style={{
-                                        backgroundColor: 'transparent',
-                                        borderColor: '#d0c5b5',
-                                        color: '#1b1c1a',
-                                        fontFamily: "'Inter', sans-serif"
-                                    }}
-                                    onMouseEnter={e => {
-                                        e.currentTarget.style.borderColor = '#C9A96E';
-                                    }}
-                                    onMouseLeave={e => {
-                                        e.currentTarget.style.borderColor = '#d0c5b5';
-                                    }}
-                                >
-                                    Buy Now
-                                </button>
+                                {/* Add Variant — owning seller only */}
+                                {isOwnerSeller && (
+                                    <button
+                                        id="add-variant-btn"
+                                        onClick={() => setShowVariantModal(true)}
+                                        className="w-full py-4 text-[11px] uppercase tracking-[0.25em] font-medium transition-all duration-300 border"
+                                        style={{ backgroundColor: 'transparent', borderColor: '#C9A96E', color: '#C9A96E', fontFamily: "'Inter', sans-serif" }}
+                                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#C9A96E'; e.currentTarget.style.color = '#1b1c1a'; }}
+                                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#C9A96E'; }}
+                                    >
+                                        + Add Colour Variant
+                                    </button>
+                                )}
+
+                                {/* Buyer actions */}
+                                {!isOwnerSeller && (
+                                    <>
+                                        <button
+                                            className="w-full py-4 text-[11px] uppercase tracking-[0.25em] font-medium transition-all duration-300"
+                                            style={{ backgroundColor: '#1b1c1a', color: '#fbf9f6', fontFamily: "'Inter', sans-serif" }}
+                                            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#C9A96E'; e.currentTarget.style.color = '#1b1c1a'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#1b1c1a'; e.currentTarget.style.color = '#fbf9f6'; }}
+                                        >
+                                            Add to Cart
+                                        </button>
+                                        <button
+                                            className="w-full py-4 text-[11px] uppercase tracking-[0.25em] font-medium transition-all duration-300 border"
+                                            style={{ backgroundColor: 'transparent', borderColor: '#d0c5b5', color: '#1b1c1a', fontFamily: "'Inter', sans-serif" }}
+                                            onMouseEnter={e => { e.currentTarget.style.borderColor = '#C9A96E'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.borderColor = '#d0c5b5'; }}
+                                        >
+                                            Buy Now
+                                        </button>
+                                    </>
+                                )}
                             </div>
 
-                            {/* Extra elegant details */}
+                            {/* ── Policies ── */}
                             <div className="mt-14 space-y-4 text-[10px] uppercase tracking-[0.1em]" style={{ color: '#B5ADA3' }}>
                                 <div className="flex justify-between border-b pb-3" style={{ borderColor: '#e4e2df' }}>
-                                    <span>Shipping</span>
-                                    <span>Complimentary over INR 15,000</span>
+                                    <span>Shipping</span><span>Complimentary over INR 15,000</span>
                                 </div>
                                 <div className="flex justify-between border-b pb-3" style={{ borderColor: '#e4e2df' }}>
-                                    <span>Returns</span>
-                                    <span>Within 14 days of delivery</span>
+                                    <span>Returns</span><span>Within 14 days of delivery</span>
                                 </div>
                                 <div className="flex justify-between border-b pb-3" style={{ borderColor: '#e4e2df' }}>
-                                    <span>Authenticity</span>
-                                    <span>100% Guaranteed</span>
+                                    <span>Authenticity</span><span>100% Guaranteed</span>
                                 </div>
                             </div>
 
@@ -369,6 +356,18 @@ const ProductDetail = () => {
                     </div>
                 </div>
             </div>
+
+            {/* Add Colour Variant Modal */}
+            {showVariantModal && (
+                <AddVariantModal
+                    productId={product._id}
+                    onClose={() => setShowVariantModal(false)}
+                    onSuccess={(updatedProduct) => {
+                        setProduct(updatedProduct);
+                        setShowVariantModal(false);
+                    }}
+                />
+            )}
         </>
     );
 };

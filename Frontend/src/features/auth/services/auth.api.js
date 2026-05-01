@@ -45,3 +45,13 @@ export const Getme = async () => {
         throw new Error(message);
     }
 }
+
+export const setRole = async (role) => {
+    try {
+        const response = await AuthApi.post("/set-role", { role });
+        return response.data;
+    } catch (err) {
+        const message = err.response?.data?.message ?? err.message;
+        throw new Error(message);
+    }
+}

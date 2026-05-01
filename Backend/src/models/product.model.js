@@ -1,61 +1,70 @@
 import mongoose from 'mongoose';
 import priceSchema from './price.schema.js';
 
-const productSchema = new mongoose.Schema({
-    title: {
+// Size entry inside a color variant
+const sizeSchema = new mongoose.Schema({
+    size: {
         type: String,
-        required: true
+        required: true,
+    },
+    stock: {
+        type: Number,
+        default: 0,
     },
     price: {
-        amount: {
-            type: Number,
-            required: true
-        },
-        currency: {
-            type: String,
-            enum: ['INR', 'USD'],
-            default: 'INR'
-        }
+        type: priceSchema,
     },
-    description: {
+}, { _id: false });
+
+// Color variant — one entry per color, each has its own photos + sizes
+const colorVariantSchema = new mongoose.Schema({
+    color: {
         type: String,
-        required: true
+        required: true,   // e.g. "Black", "Olive Green"
+    },
+    colorHex: {
+        type: String,
+        default: '#888888', // fallback swatch color
     },
     images: [
         {
-            url: {
-                type: String,
-                required: true
-            },
+            url: { type: String, required: true },
         }
     ],
-    variant: [
+    sizes: [sizeSchema],
+});
+
+const productSchema = new mongoose.Schema({
+    title: {
+        type: String,
+        required: true,
+    },
+    price: {
+        amount: { type: Number, required: true },
+        currency: {
+            type: String,
+            enum: ['INR', 'USD'],
+            default: 'INR',
+        },
+    },
+    description: {
+        type: String,
+        required: true,
+    },
+    color: {
+        type: String,
+        required: true,
+    },
+    images: [
         {
-            images: [
-                {
-                    url: {
-                        type: String,
-                        required: true
-                    }
-                }
-            ],
-            stock: {
-                type: Number,
-                default: 0
-            },
-            attributes: {
-                type: Map,
-                of: String
-            },
-            price: {
-                type: priceSchema
-            }
+            url: { type: String, required: true },
         }
     ],
+    variant: [colorVariantSchema],
     seller: {
         type: mongoose.Schema.Types.ObjectId,
-        ref: 'User'
-    }
+        ref: 'User',
+    },
 }, { timestamps: true });
 
 const ProductModel = mongoose.model('Product', productSchema);
