@@ -7,7 +7,9 @@ const cartSlice = createSlice({
     },
     reducers: {
         setItems: (state, action) => {
-            state.items = action.payload;
+            // Handle both full response objects and direct item arrays
+            const cartData = action.payload?.data || action.payload;
+            state.items = cartData?.items || (Array.isArray(cartData) ? cartData : []);
         },
         addToCart: (state, action) => {
             state.items.push(action.payload);

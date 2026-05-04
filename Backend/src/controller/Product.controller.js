@@ -3,8 +3,20 @@ import { uploadFile } from "../services/storage.services.js";
 
 export const CreateProductController = async (req, res) => {
 
-    const { title, description, priceAmount, priceCurrency, color } = req.body;
+    const { title, description, priceAmount, priceCurrency, color, size } = req.body;
     const seller = req.user;
+
+    let parsedSize = [];
+    if (size) {
+        try {
+            parsedSize = JSON.parse(size).map(s => ({
+                size: s.size,
+                stock: Number(s.stock) || 0
+            }));
+        } catch (e) {
+            console.error("Error parsing size in CreateProductController", e);
+        }
+    }
 
     const images = await Promise.all(req.files.map(async (file) => {
         return await uploadFile({
@@ -21,6 +33,7 @@ export const CreateProductController = async (req, res) => {
         },
         description,
         color: color,
+        size: parsedSize,
         images,
         seller: seller._id
     })
@@ -126,6 +139,63 @@ export const AddVariantController = async (req, res) => {
         res.status(201).json({
             success: true,
             message: "Variant added successfully",
+            product,
+        });
+
+    } catch (error) {
+        res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+export const UpdateExistingProductController = async (req, res) => {
+    const productId = req.params.productId;
+
+    if (!productId) {
+        return res.status(400).json({ success: false, message: "Product ID is required" });
+    }
+    try {
+
+        const { title, description, priceAmount, priceCurrency, color, size } = req.body;
+
+        const product = await ProductModel.findById(productId);
+
+        if (!product) {
+            return res.status(404).json({ success: false, message: "Product not found" });
+        }
+
+        if (product.seller.toString() !== req.user._id.toString()) {
+            return res.status(403).json({ message: "Unauthorized" });
+        }
+
+        if (title) {
+            product.title = title;
+        }
+
+        if (description) {
+            product.description = description;
+        }
+
+        if (priceAmount) {
+            product.price.amount = priceAmount;
+        }
+
+        if (priceCurrency) {
+            product.price.currency = priceCurrency;
+        }
+
+        if (color) {
+            product.color = color;
+        }
+
+        if (size) {
+            product.size = size;
+        }
+
+        await product.save();
+
+        res.status(200).json({
+            success: true,
+            message: "Product updated successfully",
             product,
         });
 

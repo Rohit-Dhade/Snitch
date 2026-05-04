@@ -49,3 +49,12 @@ export const addVariant = async (productId, formData) => {
         throw error;
     }
 };
+
+export const updateProduct = async (productId, updateData) => {
+    try {
+        const response = await productApi.put(`/update-product/${productId}`, updateData);
+        return response.data;
+    } catch (error) {
+        throw error;
+    }
+};

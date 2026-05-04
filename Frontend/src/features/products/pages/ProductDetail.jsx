@@ -4,6 +4,9 @@ import { useSelector } from 'react-redux';
 import { useProduct } from '../hook/useProduct';
 import useCart from '../../cart/hook/useCart';
 import AddVariantModal from '../components/AddVariantModal';
+import UpdateProductModal from '../components/UpdateProductModal';
+import { toast } from 'react-hot-toast';
+import Navbar from '../../../components/Navbar';
 
 const ProductDetail = () => {
     const { id } = useParams();
@@ -13,6 +16,7 @@ const ProductDetail = () => {
     const [selectedSize, setSelectedSize] = useState(null);
     const [selectedImage, setSelectedImage] = useState(0);
     const [showVariantModal, setShowVariantModal] = useState(false);
+    const [showUpdateModal, setShowUpdateModal] = useState(false);
 
     const { handleGetProductById } = useProduct();
     const currentUser = useSelector(state => state.auth.user);
@@ -52,8 +56,8 @@ const ProductDetail = () => {
 
     // Sizes available for the active color
     const activeSizes = useMemo(
-        () => activeVariant?.sizes ?? [],
-        [activeVariant]
+        () => activeVariant?.sizes ?? product?.size ?? [],
+        [activeVariant, product]
     );
 
     // The selected size entry
@@ -85,15 +89,11 @@ const ProductDetail = () => {
 
     return (
         <>
-            <link
-                href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Inter:wght@300;400;500;600&display=swap"
-                rel="stylesheet"
-            />
-
             <div
                 className="min-h-screen selection:bg-[#C9A96E]/30 pb-24"
                 style={{ backgroundColor: '#fbf9f6', fontFamily: "'Inter', sans-serif" }}
             >
+                <Navbar />
                 <div className="max-w-7xl mx-auto px-8 lg:px-16 xl:px-24 pt-12 lg:pt-20">
                     <div className="flex flex-col lg:flex-row gap-12 lg:gap-24 items-start">
 
@@ -239,7 +239,7 @@ const ProductDetail = () => {
                             )}
 
                             {/* ── Size Selector ── */}
-                            {activeVariant && activeSizes.length > 0 && (
+                            {activeSizes.length > 0 && (
                                 <div className="mb-8">
                                     <h3 className="text-[10px] uppercase tracking-[0.24em] font-medium mb-3" style={{ color: '#C9A96E' }}>
                                         Size
@@ -306,31 +306,43 @@ const ProductDetail = () => {
 
                                 {/* Add Variant — owning seller only */}
                                 {isOwnerSeller && (
-                                    <button
-                                        id="add-variant-btn"
-                                        onClick={() => setShowVariantModal(true)}
-                                        className="w-full py-4 text-[11px] uppercase tracking-[0.25em] font-medium transition-all duration-300 border"
-                                        style={{ backgroundColor: 'transparent', borderColor: '#C9A96E', color: '#C9A96E', fontFamily: "'Inter', sans-serif" }}
-                                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#C9A96E'; e.currentTarget.style.color = '#1b1c1a'; }}
-                                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#C9A96E'; }}
-                                    >
-                                        + Add Colour Variant
-                                    </button>
+                                    <div className="flex flex-col gap-3">
+                                        <button
+                                            id="add-variant-btn"
+                                            onClick={() => setShowVariantModal(true)}
+                                            className="w-full py-4 text-[11px] uppercase tracking-[0.25em] font-medium transition-all duration-300 border"
+                                            style={{ backgroundColor: 'transparent', borderColor: '#C9A96E', color: '#C9A96E', fontFamily: "'Inter', sans-serif" }}
+                                            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#C9A96E'; e.currentTarget.style.color = '#1b1c1a'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#C9A96E'; }}
+                                        >
+                                            + Add Colour Variant
+                                        </button>
+                                        <button
+                                            id="update-product-btn"
+                                            onClick={() => setShowUpdateModal(true)}
+                                            className="w-full py-4 text-[11px] uppercase tracking-[0.25em] font-medium transition-all duration-300 border"
+                                            style={{ backgroundColor: 'transparent', borderColor: '#7A6E63', color: '#7A6E63', fontFamily: "'Inter', sans-serif" }}
+                                            onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#7A6E63'; e.currentTarget.style.color = '#fbf9f6'; }}
+                                            onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#7A6E63'; }}
+                                        >
+                                            Update Product Details
+                                        </button>
+                                    </div>
                                 )}
 
                                 {/* Buyer actions */}
                                 {!isOwnerSeller && (
                                     <>
                                         <button onClick={() => {
-                                            if (!activeVariant) {
-                                                alert("Please select a colour first");
+                                            if (hasVariants && selectedColorIdx === null && (!product.size || product.size.length === 0)) {
+                                                toast.error("Please select a colour first");
                                                 return;
                                             }
-                                            if (!selectedSize) {
-                                                alert("Please select a size first");
+                                            if (activeSizes.length > 0 && !selectedSize) {
+                                                toast.error("Please select a size first");
                                                 return;
                                             }
-                                            handleAddToCart(id, activeVariant._id, 1, activeSizeEntry?.price ?? displayPrice, selectedSize);
+                                            handleAddToCart(id, activeVariant?._id || null, 1, activeSizeEntry?.price ?? displayPrice, selectedSize || undefined);
                                         }}
                                             className="w-full py-4 text-[11px] uppercase tracking-[0.25em] font-medium transition-all duration-300"
                                             style={{ backgroundColor: '#1b1c1a', color: '#fbf9f6', fontFamily: "'Inter', sans-serif" }}
@@ -369,7 +381,6 @@ const ProductDetail = () => {
                 </div>
             </div>
 
-            {/* Add Colour Variant Modal */}
             {showVariantModal && (
                 <AddVariantModal
                     productId={product._id}
@@ -377,6 +388,18 @@ const ProductDetail = () => {
                     onSuccess={(updatedProduct) => {
                         setProduct(updatedProduct);
                         setShowVariantModal(false);
+                    }}
+                />
+            )}
+
+            {showUpdateModal && (
+                <UpdateProductModal
+                    product={product}
+                    onClose={() => setShowUpdateModal(false)}
+                    onSuccess={(updatedProduct) => {
+                        setProduct(updatedProduct);
+                        setShowUpdateModal(false);
+                        toast.success("Product updated successfully");
                     }}
                 />
             )}

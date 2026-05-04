@@ -17,12 +17,12 @@ export const viewCartApi = async () => {
     return response.data;
 };
 
-// export const removeFromCartApi = async (itemId) => {
-//     const response = await cartApi.delete(`/remove/${itemId}`);
-//     return response.data;
-// };
+export const removeFromCartApi = async (itemId) => {
+    const response = await cartApi.delete(`/remove/${itemId}`);
+    return response.data;
+};
 
-// export const updateQuantityApi = async (itemId, quantity) => {
-//     const response = await cartApi.put(`/update/${itemId}`, { quantity });
-//     return response.data;
-// };
+export const updateQuantityApi = async (itemId, quantity) => {
+    const response = await cartApi.put(`/update/${itemId}`, { quantity });
+    return response.data;
+};

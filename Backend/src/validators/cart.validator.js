@@ -10,9 +10,15 @@ const validateRequest = (req,res,next) => {
 const ValidateAddToCart = [
     
     expressValidator.param("productId").notEmpty().withMessage("Product ID is required"),
-    expressValidator.body("variant").notEmpty().withMessage("Variant is required"),
+    // expressValidator.body("variant").notEmpty().withMessage("Variant is required"),
     expressValidator.body("quantity").notEmpty().withMessage("Quantity is required"),
     expressValidator.body("price").notEmpty().withMessage("Price is required"),
+    validateRequest,
+]
+
+export const ValidateUpdateCartQuantity = [
+    expressValidator.param("itemId").notEmpty().withMessage("Item ID is required"),
+    expressValidator.body("quantity").isInt({ min: 1 }).withMessage("Quantity must be at least 1"),
     validateRequest,
 ]
 

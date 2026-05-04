@@ -1,58 +1,65 @@
 import React, { useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { useProduct } from '../hook/useProduct';
-import { Link } from 'react-router';
-import { useNavigate } from 'react-router';
+import { Link, useLocation } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import RoleSetupModal from '../../auth/components/RoleSetupModal';
+import Navbar from '../../../components/Navbar';
 
 const Home = () => {
     const products = useSelector(state => state.product.products);
     const user = useSelector(state => state.auth.user);
     const { handleGetAllProducts } = useProduct();
-
+    const location = useLocation();
     const navigate = useNavigate();
+
+    // Get search query from URL
+    const queryParams = new URLSearchParams(location.search);
+    const searchQuery = queryParams.get('search')?.toLowerCase() || '';
 
     useEffect(() => {
         handleGetAllProducts();
     }, []);
 
+    const filteredProducts = products?.filter(product => 
+        product.title?.toLowerCase().includes(searchQuery) || 
+        product.description?.toLowerCase().includes(searchQuery)
+    ) || [];
+
     return (
         <>
             {/* Role setup modal for new Google users */}
             {user?.needsRoleSetup && <RoleSetupModal />}
-            {/* Google Fonts */}
-            <link
-                href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Inter:wght@300;400;500;600&display=swap"
-                rel="stylesheet"
-            />
-
+            
             <div
                 className="min-h-screen selection:bg-[#C9A96E]/30"
                 style={{ backgroundColor: '#fbf9f6', fontFamily: "'Inter', sans-serif" }}
             >
-               
+                <Navbar />
 
                 <div className="max-w-7xl mx-auto px-8 lg:px-16 xl:px-24">
                     {/* ── Hero / Header ── */}
                     <div className="pt-20 pb-20 text-center flex flex-col items-center">
                         <span className="text-[10px] uppercase tracking-[0.24em] font-medium mb-6" style={{ color: '#C9A96E' }}>
-                            The Collection
+                            {searchQuery ? `SEARCH RESULTS FOR "${searchQuery.toUpperCase()}"` : 'The Collection'}
                         </span>
                         <h1
                             className="text-5xl lg:text-7xl font-light leading-tight mb-6"
                             style={{ fontFamily: "'Cormorant Garamond', serif", color: '#1b1c1a' }}
                         >
-                            Curated Archive
+                            {searchQuery ? 'Found Pieces' : 'Curated Archive'}
                         </h1>
-                        <p className="max-w-xl mx-auto text-sm leading-relaxed" style={{ color: '#7A6E63' }}>
-                            Discover our latest curation of premium minimalist pieces, meticulously designed for effortless elegance and enduring quality.
-                        </p>
+                        {!searchQuery && (
+                            <p className="max-w-xl mx-auto text-sm leading-relaxed" style={{ color: '#7A6E63' }}>
+                                Discover our latest curation of premium minimalist pieces, meticulously designed for effortless elegance and enduring quality.
+                            </p>
+                        )}
                     </div>
 
                     {/* ── Product Grid ── */}
-                    {products && products.length > 0 ? (
+                    {filteredProducts.length > 0 ? (
                         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-x-8 gap-y-16 pb-32">
-                            {products.map(product => {
+                            {filteredProducts.map(product => {
                                 const imageUrl = product.images && product.images.length > 0
                                     ? product.images[ 0 ].url
                                     : '/snitch_editorial_warm.png'; // Fallback
@@ -102,10 +109,10 @@ const Home = () => {
                     ) : (
                         <div className="py-24 text-center flex flex-col items-center">
                             <h2 className="text-2xl mb-4" style={{ fontFamily: "'Cormorant Garamond', serif", color: '#1b1c1a' }}>
-                                No pieces available.
+                                {searchQuery ? `No results found for "${searchQuery}"` : 'No pieces available.'}
                             </h2>
                             <p className="max-w-md mx-auto text-sm leading-relaxed" style={{ color: '#7A6E63' }}>
-                                We are currently preparing our next collection. Please check back later.
+                                {searchQuery ? 'Try searching for something else or browse our full collection.' : 'We are currently preparing our next collection. Please check back later.'}
                             </p>
                         </div>
                     )}

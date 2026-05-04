@@ -1,6 +1,6 @@
-import { addToCart as addItemToCart, setItems } from '../state/cart.slice.js'
+import { addToCart as addItemToCart, setItems, updateQuantity } from '../state/cart.slice.js'
 import { useDispatch, useSelector } from "react-redux"
-import { addToCartApi, viewCartApi } from '../services/cart.api.js'
+import { addToCartApi, viewCartApi, removeFromCartApi, updateQuantityApi } from '../services/cart.api.js'
 import { toast } from 'react-hot-toast'
 
 const useCart = () => {
@@ -27,7 +27,29 @@ const useCart = () => {
         }
     }   
 
-    return { cart, handleAddToCart, handleViewCart };
+    async function handleRemoveFromCart(itemId) {
+        try {
+            const response = await removeFromCartApi(itemId);
+            dispatch(setItems(response.data));
+            toast.success("Item removed from cart");
+        } catch (err) {
+            console.error("Error removing item from cart:", err);
+            toast.error(err.response?.data?.message || "Failed to remove item from cart");
+        }
+    }
+
+    async function handleUpdateQuantity(itemId, quantity) {
+        try {
+            if (quantity < 1) return;
+            const response = await updateQuantityApi(itemId, quantity);
+            dispatch(setItems(response.data));
+        } catch (err) {
+            console.error("Error updating quantity:", err);
+            toast.error(err.response?.data?.message || "Failed to update quantity");
+        }
+    }
+
+    return { cart, handleAddToCart, handleViewCart, handleRemoveFromCart, handleUpdateQuantity };
 }
 
 export default useCart;

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { authenticateSeller } from "../middleware/auth.middleware.js";
-import { CreateProductController, GetSellerProductController, GetAllProductController ,GetProductByIdController ,AddVariantController } from "../controller/Product.controller.js";
+import { CreateProductController, GetSellerProductController, GetAllProductController, GetProductByIdController, AddVariantController, UpdateExistingProductController } from "../controller/Product.controller.js";
 import multer from "multer";
 import { validateCreateProduct } from "../validators/product.validator.js";
 
@@ -22,5 +22,7 @@ ProductRouter.get('/get-product/seller', authenticateSeller, GetSellerProductCon
 ProductRouter.get('/get-all-product', GetAllProductController);
 
 ProductRouter.get('/get-product/:id', GetProductByIdController);
+
+ProductRouter.put('/update-product/:productId', authenticateSeller, UpdateExistingProductController);
 
 export default ProductRouter;

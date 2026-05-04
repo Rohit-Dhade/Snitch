@@ -4,6 +4,7 @@ import { useProduct } from '../hook/useProduct.js';
 
 const CURRENCIES = ['INR', 'USD', 'EUR', 'GBP'];
 const MAX_IMAGES = 7;
+const SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
 
 const CreateProduct = () => {
     const { handleCreateProduct } = useProduct();
@@ -14,7 +15,22 @@ const CreateProduct = () => {
         description: '',
         priceAmount: '',
         priceCurrency: 'INR',
+        color: '',
     });
+    
+    const [sizes, setSizes] = useState({});
+    
+    const handleSizeChange = (sz, stockStr) => {
+        setSizes(prev => {
+            const next = { ...prev };
+            if (stockStr === null) {
+                delete next[sz];
+            } else {
+                next[sz] = stockStr;
+            }
+            return next;
+        });
+    };
     const [images, setImages] = useState([]);
     const [isDragging, setIsDragging] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -65,6 +81,16 @@ const CreateProduct = () => {
             data.append('description', formData.description);
             data.append('priceAmount', formData.priceAmount);
             data.append('priceCurrency', formData.priceCurrency);
+            data.append('color', formData.color);
+            
+            const sizeArr = Object.entries(sizes).map(([sz, stock]) => ({
+                size: sz,
+                stock: Number(stock) || 0
+            }));
+            if (sizeArr.length > 0) {
+                data.append('size', JSON.stringify(sizeArr));
+            }
+            
             images.forEach(img => data.append('images', img.file));
             await handleCreateProduct(data);
             navigate('/');
@@ -228,6 +254,76 @@ const CreateProduct = () => {
                                                 ))}
                                             </select>
                                         </div>
+                                    </div>
+                                </div>
+
+                                {/* Color */}
+                                <div className="flex flex-col gap-2">
+                                    <label
+                                        htmlFor="cp-color"
+                                        className="text-[10px] uppercase tracking-[0.2em] font-medium"
+                                        style={{ color: '#6b6056' }}
+                                    >
+                                        Color
+                                    </label>
+                                    <input
+                                        id="cp-color"
+                                        type="text"
+                                        name="color"
+                                        value={formData.color}
+                                        onChange={handleChange}
+                                        required
+                                        placeholder="e.g. Midnight Black"
+                                        className={inputClass}
+                                        style={inputStyle}
+                                        onFocus={handleFocus}
+                                        onBlur={handleBlur}
+                                    />
+                                </div>
+
+                                {/* Sizes */}
+                                <div className="flex flex-col gap-3">
+                                    <label className="text-[10px] uppercase tracking-[0.2em] font-medium" style={{ color: '#6b6056' }}>
+                                        Sizes & Stock <span style={{ textTransform: 'none', letterSpacing: 0, color: '#4a453f' }}>— toggle to enable</span>
+                                    </label>
+                                    <div className="grid grid-cols-1 gap-1.5 border p-4" style={{ borderColor: '#38332c' }}>
+                                        <div className="flex items-center gap-3 px-3 pb-1 text-[9px] uppercase tracking-[0.18em]" style={{ color: '#4a453f' }}>
+                                            <span className="w-[80px]">Size</span>
+                                            <span className="flex-1">Stock (units)</span>
+                                        </div>
+                                        {SIZES.map(sz => {
+                                            const enabled = sizes[sz] !== undefined;
+                                            return (
+                                                <div key={sz} className="flex items-center gap-3 py-2 px-3 transition-colors duration-200"
+                                                    style={{
+                                                        backgroundColor: enabled ? 'rgba(184,149,90,0.07)' : 'transparent',
+                                                        border: `1px solid ${enabled ? '#b8955a' : '#38332c'}`,
+                                                    }}
+                                                >
+                                                    <button type="button"
+                                                        onClick={() => handleSizeChange(sz, enabled ? null : '')}
+                                                        className="flex items-center gap-2 w-[80px]"
+                                                        style={{ color: enabled ? '#e8e2d9' : '#5a5248' }}
+                                                    >
+                                                        <div style={{
+                                                            width: 14, height: 14, border: '1px solid currentColor',
+                                                            display: 'flex', alignItems: 'center', justifyContent: 'center'
+                                                        }}>
+                                                            {enabled && <div style={{ width: 8, height: 8, backgroundColor: 'currentColor' }} />}
+                                                        </div>
+                                                        <span className="text-[11px] font-medium tracking-[0.1em]">{sz}</span>
+                                                    </button>
+                                                    {enabled && (
+                                                        <input type="number" min="0" placeholder="0"
+                                                            value={sizes[sz] || ''}
+                                                            onChange={e => handleSizeChange(sz, e.target.value)}
+                                                            className="flex-1 bg-transparent border-b outline-none text-sm px-2 py-1 placeholder:text-[#555048]"
+                                                            style={{ borderColor: '#38332c', color: '#e8e2d9', fontFamily: "'Inter', sans-serif" }}
+                                                        />
+                                                    )}
+                                                </div>
+                                            )
+                                        })}
                                     </div>
                                 </div>
                             </div>
