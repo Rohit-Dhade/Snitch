@@ -1,5 +1,6 @@
 import cartModel from "../models/cart.model.js";
 import { stockOfVariant } from "../dao/product.dao.js";
+import mongoose from "mongoose";
 
 export const AddToCartController = async (req, res) => {
     const productId = req.params.productId;
@@ -89,7 +90,62 @@ export const AddToCartController = async (req, res) => {
 export const viewCartController = async (req, res) => {
     const userId = req.user._id;
 
-    const cart = await cartModel.findOne({ user: userId }).populate('items.product')
+    const cart = await cartModel.aggregate(
+        [
+            {
+                $match: {
+                    user: new mongoose.Types.ObjectId(userId)
+                }
+            },
+            { $unwind: { path: '$items' } },
+            {
+                $lookup: {
+                    from: 'products',
+                    localField: 'items.product',
+                    foreignField: '_id',
+                    as: 'items.product'
+                }
+            },
+            { $unwind: { path: '$items.product' } },
+            {
+                $unwind: { path: '$items.product.variant' }
+            },
+            {
+                $match: {
+                    $expr: {
+                        $eq: [
+                            '$items.variant',
+                            '$items.product.variant._id'
+                        ]
+                    }
+                }
+            },
+            {
+                $addFields: {
+                    itemPrice: {
+                        price: {
+                            $multiply: [
+                                '$items.quantity',
+                                '$items.price.amount'
+                            ]
+                        },
+                        currency: '$items.price.currency'
+                    }
+                }
+            },
+            {
+                $group: {
+                    _id: '_id',
+                    totalPrice: { $sum: '$itemPrice.price' },
+                    currency: {
+                        $first: '$itemPrice.currency'
+                    },
+                    items: { $push: '$items' }
+                }
+            }
+        ]
+    )
+
     if (!cart) {
         return res.status(404).json({ message: "Cart not found", success: false });
     }

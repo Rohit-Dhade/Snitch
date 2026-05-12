@@ -12,10 +12,6 @@ const Cart = () => {
 
     const items = Array.isArray(cart?.items) ? cart.items : [];
 
-    const calculateTotal = () => {
-        return items.reduce((total, item) => total + (item.price?.amount || 0) * (item.quantity || 1), 0);
-    }
-
     return (
         <div className="min-h-screen bg-white selection:bg-black selection:text-white">
             <Navbar />
@@ -41,13 +37,14 @@ const Cart = () => {
                         <div className="hidden md:grid grid-cols-12 gap-4 text-[10px] font-bold text-gray-400 tracking-widest uppercase mb-6 pb-4 border-b border-gray-100">
                             <div className="col-span-7">PRODUCT</div>
                             <div className="col-span-3 text-center">QUANTITY</div>
-                            <div className="col-span-2 text-right">TOTAL</div>
+                            <div className="col-span-2 text-right">PRICE</div>
                         </div>
 
                         {/* Cart Items */}
                         <div className="space-y-8 md:space-y-8">
                             {items.map((item) => {
-                                const variantObj = item.product?.variant?.find(v => v._id === item.variant);
+                                // In the aggregate response, product.variant is already the matched variant object (not an array)
+                                const variantObj = item.product?.variant;
                                 const displayColor = variantObj?.color || item.product?.color;
                                 const displayImage = variantObj?.images?.[0]?.url || item.product?.images?.[0]?.url || 'https://via.placeholder.com/150';
 
@@ -127,8 +124,7 @@ const Cart = () => {
 
                                         {/* Total Price */}
                                         <div className="col-span-1 md:col-span-2 text-right hidden md:block">
-                                            <p className="text-sm font-bold tracking-wide">Rs. {((item.price?.amount || 0) * (item.quantity || 1)).toFixed(2)}</p>
-                                            {/* <p className="text-xs text-gray-500 mt-2 max-w-[300px] text-justify">Rohit dHade</p> */}
+                                            <p className="text-sm font-bold tracking-wide">Rs. {(item.price?.amount || 0).toFixed(2)}</p>
                                         </div>
                                     </div>
                                 );
@@ -149,7 +145,7 @@ const Cart = () => {
                             <div className="flex flex-col items-end order-1 lg:order-2">
                                 <div className="flex items-center justify-end gap-6 mb-4">
                                     <span className="text-lg font-bold tracking-wide text-gray-900">Estimated total</span>
-                                    <span className="text-2xl font-light tracking-wide text-gray-900">Rs. {calculateTotal().toFixed(2)}</span>
+                                    <span className="text-2xl font-light tracking-wide text-gray-900">Rs. {(cart?.totalPrice || 0).toFixed(2)}</span>
                                 </div>
                                 <p className="text-xs text-gray-500 mb-8 text-right max-w-sm leading-relaxed">Tax included. <a href="#" className="underline underline-offset-2 hover:text-black transition-colors">Shipping</a> and discounts calculated at checkout.</p>
                                 <button className="w-full max-w-md bg-black text-white font-bold text-sm tracking-widest uppercase py-4 px-8 hover:bg-gray-800 transition-colors shadow-lg shadow-black/10">
