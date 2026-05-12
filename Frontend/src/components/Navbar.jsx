@@ -1,12 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useSelector } from 'react-redux';
 import { Link, useNavigate } from 'react-router-dom';
+import { useAuth } from '../features/auth/hook/useAuth';
 
 const Navbar = () => {
     const user = useSelector(state => state.auth.user);
     const cart = useSelector(state => state.cart);
     const [searchQuery, setSearchQuery] = useState('');
+    const [showDropdown, setShowDropdown] = useState(false);
+    const dropdownRef = useRef(null);
     const navigate = useNavigate();
+    const { handleLogout } = useAuth();
 
     const items = Array.isArray(cart?.items) ? cart.items : [];
     const cartCount = items.reduce((total, item) => total + (item?.quantity || 0), 0);
@@ -17,6 +21,29 @@ const Navbar = () => {
             navigate(`/?search=${encodeURIComponent(searchQuery.trim())}`);
         }
     };
+
+    const handleNameClick = () => {
+        if (user?.role === 'seller') {
+            navigate('/seller/dashboard');
+        }
+    };
+
+    const onLogout = async () => {
+        setShowDropdown(false);
+        const result = await handleLogout();
+        if (result?.success) navigate('/login');
+    };
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
+                setShowDropdown(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     return (
         <nav className="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-gray-100 px-6 py-4">
@@ -56,10 +83,40 @@ const Navbar = () => {
                     
                     {/* User Info */}
                     {user ? (
-                        <div className="flex items-center gap-2 group cursor-pointer">
-                            <span className="text-[10px] tracking-[0.15em] font-bold uppercase text-gray-500 group-hover:text-black transition-colors">
+                        <div className="flex items-center gap-3">
+                            {/* Name — sellers click to go to dashboard */}
+                            <span 
+                                onClick={handleNameClick}
+                                className={`text-[10px] tracking-[0.15em] font-bold uppercase text-gray-500 hover:text-black transition-colors ${user.role === 'seller' ? 'cursor-pointer' : ''}`}
+                            >
                                 {user.fullname || user.name || 'ACCOUNT'}
                             </span>
+
+                            {/* Logout dropdown toggle */}
+                            <div className="relative" ref={dropdownRef}>
+                                <button 
+                                    onClick={() => setShowDropdown(prev => !prev)}
+                                    className="flex items-center bg-transparent border-none outline-none cursor-pointer p-1"
+                                >
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="text-gray-400 hover:text-black transition-colors">
+                                        <polyline points="6 9 12 15 18 9"></polyline>
+                                    </svg>
+                                </button>
+
+                                {/* Dropdown */}
+                                {showDropdown && (
+                                    <div className="absolute right-0 top-full mt-2 w-36 bg-white border border-gray-100 rounded-lg shadow-lg shadow-black/8 overflow-hidden z-50"
+                                        style={{ animation: 'fadeIn 0.15s ease-out' }}
+                                    >
+                                        <button
+                                            onClick={onLogout}
+                                            className="w-full text-left px-4 py-2.5 text-[10px] tracking-[0.12em] font-bold uppercase text-gray-600 hover:bg-red-50 hover:text-red-600 transition-colors"
+                                        >
+                                            Logout
+                                        </button>
+                                    </div>
+                                )}
+                            </div>
                         </div>
                     ) : (
                         <Link to="/login" className="text-[10px] tracking-[0.15em] font-bold uppercase text-gray-500 hover:text-black transition-colors">
@@ -82,6 +139,14 @@ const Navbar = () => {
                     </Link>
                 </div>
             </div>
+
+            {/* Dropdown animation */}
+            <style>{`
+                @keyframes fadeIn {
+                    from { opacity: 0; transform: translateY(-4px); }
+                    to { opacity: 1; transform: translateY(0); }
+                }
+            `}</style>
         </nav>
     );
 };

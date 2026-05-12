@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from "../hook/useAuth";
 import { Link, useNavigate } from 'react-router';
 import { useSelector, useDispatch } from 'react-redux';
@@ -90,8 +90,13 @@ const Register = () => {
     });
     const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
+    const hasSubmitted = useRef(false);
 
-    useEffect(() => { if (error) toast(error, "error"); }, [error, toast]);
+    // Clear any stale error when the page mounts
+    useEffect(() => { dispatch(setError(null)); }, []);
+
+    // Only show toast when error changes AFTER a form submission
+    useEffect(() => { if (error && hasSubmitted.current) toast(error, "error"); }, [error, toast]);
 
     const handleChange = (e) => {
         const { name, value, type, checked } = e.target;
@@ -101,6 +106,7 @@ const Register = () => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        hasSubmitted.current = true;
         setLoading(true);
         const result = await handleRegisterUser({
             email: formData.email, contact: formData.contactNumber,

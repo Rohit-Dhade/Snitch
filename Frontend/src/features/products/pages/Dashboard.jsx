@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { useProduct } from '../hook/useProduct.js';
 import { useSelector } from 'react-redux';
 import { useNavigate } from 'react-router';
+import Navbar from '../../../components/Navbar';
 
 const Dashboard = () => {
     const { handleGetAllSellerProducts } = useProduct();
@@ -20,6 +21,8 @@ const Dashboard = () => {
                 href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;1,300;1,400&family=Inter:wght@300;400;500;600&display=swap"
                 rel="stylesheet"
             />
+
+            <Navbar />
 
             <div
                 className="min-h-screen selection:bg-[#C9A96E]/30"
